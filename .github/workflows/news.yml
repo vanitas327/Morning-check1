@@ -1,0 +1,74 @@
+name: Daily News Collector
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: Run news scraper
+        run: |
+          python -c "
+          import urllib.request
+          import json
+          import xml.etree.ElementTree as ET
+          from datetime import datetime
+
+          watch_url = 'https://news.search.naver.com/search.naver?where=rss&query=' + urllib.parse.quote('타이멕스 지샥 시계')
+          pharma_url = 'https://news.search.naver.com/search.naver?where=rss&query=' + urllib.parse.quote('의약계 바이오 제약')
+
+          def parse_rss(url):
+              req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+              try:
+                  xml_data = urllib.request.urlopen(req).read()
+                  root = ET.fromstring(xml_data)
+                  items = []
+                  for item in root.findall('.//item')[:10]:
+                      title = item.find('title').text if item.find('title') is not None else ''
+                      link = item.find('link').text if item.find('link') is not None else ''
+                      pubDate = item.find('pubDate').text if item.find('pubDate') is not None else ''
+                      title = title.replace('<b>', '').replace('</b>', '').replace('&quot;', '\"')
+                      items.append({'title': title, 'link': link, 'pubDate': pubDate})
+                  return items
+              except Exception as e:
+                  print('Error:', e)
+                  return []
+
+          watches = parse_rss(watch_url)
+          pharma = parse_rss(pharma_url)
+
+          now_str = datetime.now().strftime('%Y-%m-%d %H:%M KST')
+          data = {
+              'updated_at': now_str,
+              'watches': watches,
+              'pharma': pharma
+          }
+
+          with open('data.json', 'w', encoding='utf-8') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          "
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update news" && git push)
