@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>시계 & 의약 뉴스 9AM</title>
+  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22시계%20%26%20의약뉴스%22,%22short_name%22:%22시계의약뉴스%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22#121212%22,%22theme_color%22:%22#007aff%22}">
+  <style>
+    :root { --bg: #121212; --card: #1e1e1e; --text: #ffffff; --accent: #007aff; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); padding-bottom: 40px; }
+    header { background: #1a1a1a; padding: 16px; text-align: center; font-size: 1.1rem; font-weight: bold; border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 10; }
+    .update-info { font-size: 0.75rem; color: #888; font-weight: normal; margin-top: 4px; }
+    nav { display: flex; background: #222; border-bottom: 1px solid #333; }
+    nav button { flex: 1; padding: 12px; background: none; border: none; color: #888; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
+    nav button.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+    .container { padding: 16px; }
+    .news-card { background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .tag { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+    .tag-watch { background: #ff9500; color: #000; }
+    .tag-pharma { background: #34c759; color: #000; }
+    .title { font-size: 0.98rem; font-weight: 600; color: #fff; text-decoration: none; display: block; line-height: 1.4; }
+    .time { font-size: 0.75rem; color: #aaa; }
+    .loading { text-align: center; padding: 40px; color: #888; }
+  </style>
+</head>
+<body>
+  <header>
+    ⏱ 시계 & 💊 의약계 뉴스
+    <div id="updateTime" class="update-info">데이터 불러오는 중...</div>
+  </header>
+  <nav>
+    <button class="active" onclick="switchTab('all', this)">전체</button>
+    <button onclick="switchTab('watch', this)">타이멕스 / 지샥</button>
+    <button onclick="switchTab('pharma', this)">의약계 뉴스</button>
+  </nav>
+  <div class="container"><div id="feed"><div class="loading">최신 뉴스를 불러오는 중입니다...</div></div></div>
+  <script>
+    let newsData = { watches: [], pharma: [] };
+    let currentTab = 'all';
+
+    async function loadNewsData() {
+      try {
+        const timestamp = new Date().getTime();
+        const res = await fetch(`./data.json?v=${timestamp}`, { cache: 'no-store' });
+        const data = await res.json();
+        newsData = data;
+        document.getElementById('updateTime').textContent = `최종 갱신: ${data.updated_at || ''}`;
+        renderFeed(currentTab);
+      } catch (e) {
+        document.getElementById('feed').innerHTML = '<div class="loading">아직 수집된 뉴스가 없습니다. 9시에 자동으로 업데이트됩니다.</div>';
+      }
+    }
+
+    function renderFeed(filter = 'all') {
+      const feedEl = document.getElementById('feed');
+      feedEl.innerHTML = '';
+      let list = [];
+      if (filter === 'all' || filter === 'watch') list = list.concat((newsData.watches || []).map(i => ({ ...i, cat: 'watch', label: '시계' })));
+      if (filter === 'all' || filter === 'pharma') list = list.concat((newsData.pharma || []).map(i => ({ ...i, cat: 'pharma', label: '의약계' })));
+
+      list.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'news-card';
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="tag ${item.cat === 'watch' ? 'tag-watch' : 'tag-pharma'}">${item.label}</span>
+            <span class="time">${item.pubDate ? item.pubDate.substring(0, 16) : ''}</span>
+          </div>
+          <a href="${item.link}" target="_blank" class="title">${item.title}</a>
+        `;
+        feedEl.appendChild(card);
+      });
+    }
+
+    function switchTab(tab, btn) {
+      currentTab = tab;
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderFeed(tab);
+    }
+    loadNewsData();
+  </script>
+</body>
+</html>
