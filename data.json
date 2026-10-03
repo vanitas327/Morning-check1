@@ -1,0 +1,17 @@
+{
+  "updated_at": "초기 설정 완료",
+  "watches": [
+    {
+      "title": "시계 관련 최신 뉴스를 수집하는 중입니다.",
+      "link": "https://github.com",
+      "pubDate": "2026-10-04 09:00"
+    }
+  ],
+  "pharma": [
+    {
+      "title": "의약계 관련 최신 뉴스를 수집하는 중입니다.",
+      "link": "https://github.com",
+      "pubDate": "2026-10-04 09:00"
+    }
+  ]
+}
